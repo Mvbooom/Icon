@@ -32,6 +32,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private Uri imageUri;
 
+    private File outputImage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,7 +66,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //调用手机摄像头
     private void TakePhoto(){
         //创建FILE对象，用于存储拍照后的图片，第二个参数是图片的名字
-        File outputImage = new File(getExternalCacheDir(),"outputImage.jpg");
+        //位置是SD卡的应用关联目录，这个是专门用于存放当前应用缓存数据的
+        outputImage = new File(getExternalCacheDir(),"outputImage.jpg");
         try{
             if(outputImage.exists()){
                 outputImage.delete();
@@ -85,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //下面是启动相机程序
         Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
         intent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri); //这里就是指定了图片的输出地址
+        //因为这里指定了图片的Uri，所以后面的onActivityResult()返回的data就为空，源码有解释
         startActivityForResult(intent,1);
     }
 
@@ -99,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void openAlbum(){
         Intent intent = new Intent("android.intent.action.GET_CONTENT");
-        intent.setType("image/*");
+        intent.setType("image/*");//指定打开是的是相册
         startActivityForResult(intent,2);
     }
 
@@ -122,12 +126,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case 1:
                 //这个是拍照返回的数据
                 if(resultCode == RESULT_OK){
-                    try{
-                        Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                    //try{
+                        //图片压缩为原来的1/4
+                        BitmapFactory.Options opts = new BitmapFactory.Options();
+                        opts.inSampleSize = 4;
+                        Bitmap bitmap = BitmapFactory.decodeFile(imageUri.getPath(),opts);
+
+                        //Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                        //因为这种方法不知道怎么压缩图片，所以只好换成decodeFile()
+
                         photo.setImageBitmap(bitmap);
-                    }catch (FileNotFoundException e){
-                        e.printStackTrace();
-                    }
+                    //}catch (FileNotFoundException e){
+                        //e.printStackTrace();
+                    //}
                 }
                 break;
             case 2:
@@ -171,7 +182,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void displayImage(String imagePath){
         if(imagePath!=null){
-            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+            //这里同样要压缩照片，因为这部垃圾三星估计是因为返回的照片内存太大所以显示不了(选截图的图片的时候可以正常显示)
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 4;
+
+            Bitmap bitmap = BitmapFactory.decodeFile(imagePath,options);
             photo.setImageBitmap(bitmap);
         }else{
             Toast.makeText(this,"failed to get photo",Toast.LENGTH_SHORT).show();
